@@ -23,7 +23,7 @@ FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
 
 
-def load_audio(file: str, sr: int = SAMPLE_RATE):
+def load_audio(file: str, sr: int = SAMPLE_RATE, ffmpeg_path: str = "ffmpeg"):
     """
     Open an audio file and read as mono waveform, resampling as necessary
 
@@ -45,7 +45,7 @@ def load_audio(file: str, sr: int = SAMPLE_RATE):
         out, _ = (
             ffmpeg.input(file, threads=0)
             .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=sr)
-            .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True)
+            .run(cmd=[ffmpeg_path, "-nostdin"], capture_stdout=True, capture_stderr=True)
         )
     except ffmpeg.Error as e:
         raise RuntimeError(f"Failed to load audio: {e.stderr.decode()}") from e
@@ -102,6 +102,7 @@ def log_mel_spectrogram(
     n_mels: int = N_MELS,
     padding: int = 0,
     device: Optional[Union[str, torch.device]] = None,
+    ffmpeg_path: str = "ffmpeg"
 ):
     """
     Compute the log-Mel spectrogram of
@@ -127,7 +128,7 @@ def log_mel_spectrogram(
     """
     if not torch.is_tensor(audio):
         if isinstance(audio, str):
-            audio = load_audio(audio)
+            audio = load_audio(audio, ffmpeg_path=ffmpeg_path)
         audio = torch.from_numpy(audio)
 
     if device is not None:
